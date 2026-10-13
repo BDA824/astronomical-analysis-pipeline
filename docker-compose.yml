@@ -1,0 +1,33 @@
+name: astronomical-analysis-pipeline
+version: '3.8'
+
+x-python-build:
+  &python-build
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: astronomical-analysis-pipeline:latest
+  volumes:
+    - ./data:/data
+  restart: unless-stopped
+  environment:
+    - PYTHONUNBUFFERED=1
+
+
+services:
+  dask-scheduler:
+    <<: *python-build
+    command: ['dask-scheduler']
+    ports:
+      - "8786:8786" # Puerto de comunicación del scheduler con la red de Dask y con los workers
+      - "8787:8787" # Puerto de la interfaz web del scheduler
+
+  dask-worker:
+    <<: *python-build
+    command: ['dask-worker', 'dask-scheduler:8786', '--nthreads', '1', '--memory-limit', '1GB']
+    depends_on:
+      - dask-scheduler
+    volumes:
+      - data:/data
+    deploy: 
+      replicas: 2
